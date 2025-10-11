@@ -6,9 +6,9 @@
                 -q true\
                 -v true\
                 -C true\
-                -p "../../fgra-mg/src/main/resources/operations.json" \
-                -a "../../fgra-mg/src/main/resources/fgra_adg.json" \
-                -d "../../benchmarks/add/affine.json"
+                -p "../fgra-mg/src/main/resources/operations.json" \
+                -a "../fgra-mg/src/main/resources/fgra_adg.json" \
+                -d "../benchmarks/add/affine.json"
 	
 	#-d "../../benchmark/Fusion_benchmark/cnn/dai-custom.json ../../benchmark/Fusion_benchmark/csr_matvec/csr_matvec_custom.json ../../benchmark/Fusion_benchmark/lpdc_matching/lpdc_matching.json ../../benchmark/Fusion_benchmark/machsuite/machsuit_crs.json ../../benchmark/Fusion_benchmark/versa_detector/detector.json ../../benchmark/Fusion_benchmark/versa_generator/generator.json ../../benchmark/Fusion_benchmark/wavelib_dwt_sym/wtmath_dwt_sym_4096cycles_new_new.json ../../benchmark/Fusion_benchmark/wavelib_per/per_128_128.json ../../benchmark/Fusion_benchmark/wavelib_sym/sym_128_128.json"
 	# -d "../benchmarks/test/arf/arf.json ../benchmarks/test/centro-fir/centro-fir.json ../benchmarks/test/cosine1/cosine1.json ../benchmarks/test/ewf/ewf.json ../benchmarks/test/fft/fft.json ../benchmarks/test/fir1/fir1.json ../benchmarks/test/resnet1/resnet1.json"
