@@ -1,18 +1,28 @@
-cmake_minimum_required(VERSION 3.0.0)
-set(PROJECT_NAME fgra-compiler)
-project(${PROJECT_NAME} VERSION 0.1.0)
+cmake_minimum_required(VERSION 3.10)
+set(CMAKE_CXX_STANDARD 23)
+# set(CMAKE_PREFIX_PATH "/home/linhuan/tools/miniforge3/envs/fgra")
+project(fgra-mapper VERSION 0.1.0 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-# set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_BUILD_TYPE "Debug")
+find_package(nlohmann_json REQUIRED)
+find_package(spdlog REQUIRED)
 
+
+# Main executable
 set(MAIN_PATH ${PROJECT_SOURCE_DIR})
 configure_file(include/dfg/python_path.h.in ../include/dfg/python_path.h)
 
 file(GLOB_RECURSE SRCS ${CMAKE_SOURCE_DIR}/src/*.cpp)
-# file(GLOB_RECURSE SRCS ${CMAKE_SOURCE_DIR}/src/graph/*.cpp ${CMAKE_SOURCE_DIR}/src/adg/*.cpp ${CMAKE_SOURCE_DIR}/src/dfg/*.cpp ${CMAKE_SOURCE_DIR}/src/ir/*.cpp ${CMAKE_SOURCE_DIR}/src/op/*.cpp)
 add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/src/main.cpp ${SRCS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
-find_package(PythonLibs REQUIRED)
-target_include_directories(${PROJECT_NAME} PRIVATE ${PYTHON_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE ${PYTHON_LIBRARIES})
+
+# set(Python3_ROOT_DIR "/home/linhuan/tools/miniforge3/envs/fgra/bin")
+# set(Python3_FIND_STRATEGY "LOCATION")
+find_package(Python3 REQUIRED COMPONENTS Development)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${Python3_LIBRARIES})
+
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE 
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog_header_only
+)

@@ -1,1 +1,1 @@
-#define PROJECT_PATH "/home/dai-dirk/chipyard/generators/fusion_mem/fgra-compiler-update/fgra-compiler"
+#define PROJECT_PATH "/workspaces/chipyard/generators/fgra/fgra-mapper"

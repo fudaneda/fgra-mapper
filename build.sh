@@ -1,8 +1,6 @@
 # build
-mkdir -p build && cd build
-cmake ..
-# cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+cmake -B build -G Ninja
+cmake --build build
 
 # clean
 # make -C build clean
