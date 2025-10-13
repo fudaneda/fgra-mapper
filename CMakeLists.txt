@@ -14,8 +14,8 @@ file(GLOB_RECURSE SRCS ${CMAKE_SOURCE_DIR}/src/*.cpp)
 add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/src/main.cpp ${SRCS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
-# set(Python3_ROOT_DIR "/root/chipyard/.conda-env/bin")
-# set(Python3_FIND_STRATEGY "LOCATION")
+set(Python3_ROOT_DIR "/root/chipyard/.conda-env/bin")
+set(Python3_FIND_STRATEGY "LOCATION")
 find_package(Python3 REQUIRED COMPONENTS Development)
 target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${Python3_LIBRARIES})
@@ -24,4 +24,5 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE 
         nlohmann_json::nlohmann_json
         spdlog::spdlog_header_only
+
 )
