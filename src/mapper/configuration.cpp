@@ -27,6 +27,11 @@ int closestPowerOfTwoDifference(int offset){
 
  }
 
+ //@yuan: find the bias 
+ int biasNumInOneTrans(int offset, int busWidthinByte){
+    return offset % busWidthinByte;
+ }
+
 void addCfgData(std::map<int, CfgData> &cfg, const CfgDataLoc &loc, uint32_t data){
     CfgData loc_data(loc.high - loc.low + 1, data);
     cfg[loc.low] = loc_data;
@@ -619,10 +624,12 @@ std::map<int, CfgData> Configuration::getIobCfgData(IOBNode* node){
     auto agd = _mapping->getADG();
     int systemBus_Width_inByte = agd->cfgSpadDataWidth() / 8;
     // std::cout << "systemBus_Width: " << systemBus_Width_inByte << std::endl;
-    int Padding_Difference = closestPowerOfTwoDifference(dfgIONode->memOffset());
+    // int Padding_Difference = closestPowerOfTwoDifference(dfgIONode->memOffset());
+    int Padding_Difference = biasNumInOneTrans(dfgIONode->memOffset(), systemBus_Width_inByte);
     // std::cout << "Padding_Difference: " << Padding_Difference << std::endl;
     if(Padding_Difference > 1){
-        int numPadding = systemBus_Width_inByte / Padding_Difference;
+        // int numPadding = systemBus_Width_inByte / Padding_Difference;
+        int numPadding = Padding_Difference / dataBytes;
         // std::cout << "numPadding: " << numPadding << std::endl;
         offset += numPadding;
     }
@@ -635,6 +642,7 @@ std::map<int, CfgData> Configuration::getIobCfgData(IOBNode* node){
     // // baseAddrCfg.data.push_back((uint32_t)(baseAddr+offset)); 
     // // cfg[baseAddrCfgLoc.low] = baseAddrCfg;
     addCfgData(cfg, node->configInfo(baseAddrId), (uint32_t)(baseAddr+offset));
+    // std::cout << "baseAddr: " << baseAddr <<" offset: "<<offset<< std::endl;
     // std::cout << "Base Addr cfg size: " << cfg.size() << std::endl;
     int dfgNestedLevels = dfgIONode->getNestedLevels();
     //int iobNestedLevels = 10;//@yuan: for test

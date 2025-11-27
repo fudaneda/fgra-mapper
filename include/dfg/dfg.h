@@ -70,7 +70,7 @@ private:
 protected:
     // DFG nodes in topological order, DFG should be DAG
     std::vector<int> _topoNodes;
-
+    int _numPyInit = 0;
     // depth-first search, sort dfg nodes in topological order
     void dfs(DFGNode* node, std::map<int, bool>& visited);
 
@@ -179,6 +179,9 @@ public:
 
     //@yuan: check if there is flow dependecy between two nodes
     bool hasFlowDependency(DFGIONode* node0, DFGIONode* node1);
+
+    //@yuan_ddp: update the iteration distance for the edge with dynamic distance (using the minimum value excepted 0)
+    void updateIterDist();
     
     // void updateNonMultiPortBank();
 };

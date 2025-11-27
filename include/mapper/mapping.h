@@ -264,7 +264,10 @@ public:
 
     //@yuan: alfter PnR and Synchronization, we can try to make best use of the memory banks for non-multiport memory access
     //@yuan: tune the number of used bank for non-multiport memory access, enable making best use of the memory bank
-    int  updateNonMultiPortBank();
+    int  updateNonMultiPortBank(bool isreset);
+
+    //@yuan_ddp: check the current II is satisfied for the edges have dynamic iteration distance, if not, update the distance for these edges
+    bool updateDynamicDist();
 
 
     //@yuan: reset the number of used bank for non-multiport memory access

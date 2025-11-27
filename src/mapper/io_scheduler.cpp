@@ -16,6 +16,7 @@ IOScheduler::~IOScheduler()
 //@yuan TODO: task parallelism may crash the mapper, when multiport memory access occur, due to the selSatrt can not be 0 
 void IOScheduler::ioSchedule(Mapping *mapping)
 {
+    
     // std::map<int, dfgIoInfo> res;
     _dfg_io_infos.clear();
     _ex_dep = 0;
@@ -54,11 +55,11 @@ void IOScheduler::ioSchedule(Mapping *mapping)
             memNum[name] += N;
         }
     }
-    // sort by memRefName and memSize, small memory rank before big memory, than the memory with same size sorted by the name
+    // sort by memRefName and memSize, small memory rank before big memory, then the memory with same size sorted by the name
     // std::sort(sortedIoNodes.begin(), sortedIoNodes.end(), [&](int ida, int idb){
     //     return dynamic_cast<DFGIONode*>(dfg->node(ida))->memRefName() < dynamic_cast<DFGIONode*>(dfg->node(idb))->memRefName();
     // });
-    //@yuan: also sort by type, non-multiport rank before multiport, in case of multipot nodes cut off the banks 
+    //@yuan: also sort by type, non-multiport rank before multiport, in case of multiport nodes cut off the banks 
     std::sort(sortedIoNodes.begin(), sortedIoNodes.end(), [&](int ida, int idb){
         auto nodea = dynamic_cast<DFGIONode*>(dfg->node(ida));
         auto nodeb = dynamic_cast<DFGIONode*>(dfg->node(idb));
@@ -88,7 +89,7 @@ void IOScheduler::ioSchedule(Mapping *mapping)
     std::map<std::string, std::pair<int, int>> allocatedMultiport; // <name, <Id, bank>>
     std::map<std::string, int> Mem2DFGNodeId;
     for(auto id : sortedIoNodes){
-        std::cout << dfg->node(id)->name() << ": " << dynamic_cast<DFGIONode*>(dfg->node(id))->memRefName() << " multuport type: " << dynamic_cast<DFGIONode*>(dfg->node(id))->MultiportType() <<std::endl;
+        // std::cout << dfg->node(id)->name() << ": " << dynamic_cast<DFGIONode*>(dfg->node(id))->memRefName() << " multuport type: " << dynamic_cast<DFGIONode*>(dfg->node(id))->MultiportType() <<std::endl;
         dfgIoInfo ioInfo;
         auto dfgIONode =dynamic_cast<DFGIONode*>(dfg->node(id));
         bool isMultiport = false;
@@ -116,15 +117,16 @@ void IOScheduler::ioSchedule(Mapping *mapping)
         auto& attr =  mapping->dfgNodeAttr(id);
         int iobId = attr.adgNode->id();
         int iobIdx = dynamic_cast<IOBNode*>(_adg->node(iobId))->index();
-        std::cout << "iobIdx: " << iobIdx << " _iob_ens: " << _iob_ens<< std::endl;
+        // std::cout << "iobIdx: " << iobIdx << " _iob_ens: " << _iob_ens<< std::endl;
         _iob_ens |= ((uint64_t)1) << iobIdx;
         std::vector<int> banks = _adg->iobToSpadBanks(iobIdx); // spad banks connected to this IOB
-        std::cout << "_iob_ens: " << _iob_ens << " bank size: " << banks.size()<< std::endl;
+        // std::cout << "_iob_ens: " << _iob_ens << " bank size: " << banks.size()<< std::endl;
         std::sort(banks.begin(), banks.end());
         int minBank = *(std::min_element(banks.begin(), banks.end()));   
         int maxBank = *(std::max_element(banks.begin(), banks.end()));        
         std::vector<int> availBanks;
         if(_allocatedMultiportBank.count(memRefName)){
+            // std::cout << " _allocatedMultiportBank" << std::endl;
             if(dfgIONode->MultiportType() <= 1){//@yuan: for N = 1 AII > 1
                 auto idbank = _allocatedMultiportBank[memRefName];
                 availBanks.push_back(*idbank.begin());
@@ -156,7 +158,7 @@ void IOScheduler::ioSchedule(Mapping *mapping)
                 }else{//@yuan: for partitioned memory, the bank is available is not only depend on itself, but also the subsequent N-1 banks
                     bool bankavalible = true;
                     int N = dfgIONode->NumMultiportBank();
-                    // std::cout << "_allocatedMultiportBank size: " << _allocatedMultiportBank.size() << std::endl;
+                    // std::cout << "_allocatedMultiportBank size: " << _allocatedMultiportBank.size() << " N: " << N << " current bank: " << bank << std::endl;
                     if(_allocatedMultiportBank.size() == 0){
                         for(int i = 0; i < N; i++){
                             if(_cur_bank_status[bank + i].used != 0 || (bank + i) > maxBank){ //@yuan: current bank is occupied by multiport or other IOB
@@ -166,6 +168,10 @@ void IOScheduler::ioSchedule(Mapping *mapping)
                         }
                     }
                     for(auto & elem : _allocatedMultiportBank){
+                        // std::cout << "ref name: " << elem.first << std::endl;
+                        // for(auto& usedBank : elem.second){
+                        //     // std::cout << "used bank: " << usedBank << std::endl;
+                        // }
                         for(int i = 0; i < N; i++){
                             if(elem.second.count(bank + i) || _cur_bank_status[bank + i].used != 0 || (bank + i) > maxBank){ //@yuan: current bank is occupied by multiport or other IOB
                                 bankavalible = false;
@@ -191,11 +197,11 @@ void IOScheduler::ioSchedule(Mapping *mapping)
         int selBank;
         int selStart = 0; //@yuan: for multiport memory accessment, the selStart must be 0
         std::vector<std::pair<int, int>> bankStatus; // <status, start-addr>
-        std::cout << "availBanks size: " << availBanks.size() << " id: " ;
-        for(int bank : availBanks){   
-            std::cout << bank << " ";
-        }
-        std::cout << std::endl;
+        // std::cout << "availBanks size: " << availBanks.size() << " id: " ;
+        // for(int bank : availBanks){   
+        //     std::cout << bank << " ";
+        // }
+        // std::cout << std::endl;
         // 0: both available; 1: old available, older not; 2: older available, old not; 3: both not
         for(int bank : availBanks){            
             int oldUsed = _old_bank_status[bank].used;
@@ -329,9 +335,9 @@ void IOScheduler::ioSchedule(Mapping *mapping)
         ioInfo.iobAddr = iobAdress;        
         _dfg_io_infos[id] = ioInfo;  
         dfgIONode->setbank(selBank);
-        std::cout << "selbank: " << selBank << " selStart: " << selStart << " sizeofBank: " << sizeofBank<< std::endl;    
-        std::cout << id << ": " << ioInfo.addr << std::endl;
-        std::cout << "iobAddr: " << ": " << iobAdress  << "\n"<< std::endl;      
+        // std::cout << "selbank: " << selBank << " selStart: " << selStart << " sizeofBank: " << sizeofBank<< std::endl;    
+        // std::cout << id << ": " << ioInfo.addr << std::endl;
+        // std::cout << "iobAddr: " << ": " << iobAdress  << "\n"<< std::endl;      
         // std::cout << id << ": " << ioInfo.addr << std::endl;
         _cur_bank_status[selBank].used = LSType;
         // _cur_bank_status[selBank].iob = iobIdx;
@@ -342,7 +348,7 @@ void IOScheduler::ioSchedule(Mapping *mapping)
             // _allocatedMultiportBank[memRefName] = std::make_pair(iobId, selBank);
         }   
     }
-    std::cout << "_allocatedMultiportBank size: " << _allocatedMultiportBank.size() << std::endl;
+    // std::cout << "_allocatedMultiportBank size: " << _allocatedMultiportBank.size() << std::endl;
     for(auto & elem : _allocatedMultiportBank){//@yuan: we allocate the extra partitioned memory bank here
         if(elem.second.size() <= 1) continue;
         auto iobsforbank = _adg->spadBankToIobs(*elem.second.begin());
@@ -482,8 +488,8 @@ void IOScheduler::ioSchedule(Mapping *mapping)
                 }
             } 
             assert(allocated); 
-            std::cout << "selbank: " << selBank << " selStart: " << selStart << " sizeofBank: " << sizeofBank<< std::endl;    
-            std::cout << "iobAddr: " << ": " << ((selBank - *elem.second.begin()) * sizeofBank + selStart) / dataByte  << "\n"<< std::endl;  
+            // std::cout << "selbank: " << selBank << " selStart: " << selStart << " sizeofBank: " << sizeofBank<< std::endl;    
+            // std::cout << "iobAddr: " << ": " << ((selBank - *elem.second.begin()) * sizeofBank + selStart) / dataByte  << "\n"<< std::endl;  
             _cur_bank_status[selBank].used = LSType;
             // _cur_bank_status[selBank].iob = iobIdx;
             _cur_bank_status[selBank].start = selStart;

@@ -78,13 +78,16 @@ void Mapper::initializeDfg(bool modify){
     //@yuan: get the Nmax and Bmax for memory partition
     int DateinByte = _dfg->CGWidth() / 8;
     int Bmax = _adg->iobSpadBankSize() / DateinByte;
-    int Nmax = _adg->iobToSpadBanks().begin()->second.size();
+    // int Nmax = _adg->iobToSpadBanks().begin()->second.size();
+    int Nmax = std::min(8, (int)_adg->iobToSpadBanks().begin()->second.size());//@yuan: for test hw
     int maxBankNum = _adg->numIobNodes();
     //@yuan: we need to check whether the sum of N exceeds the architecture limitation
     if(!modify) setStartTime();
     _dfg->setOverflag(Bmax, DateinByte);
     _dfg->genBankingSolution(modify, Nmax, Bmax, maxBankNum);
+    // _dfg->updateIterDist();//@yuan_ddp
     if(!modify) std::cout << "Partition Scheme generation time(s): " << runningTimeMS()/1000 << std::endl;
+    // exit(0);
     _dfg->topoSortNodes();  
     // _dfg->detectMultiportIOs();
     _dfg->detectBackEdgeLoops();

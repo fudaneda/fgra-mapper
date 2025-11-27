@@ -21,7 +21,7 @@ int conflictpolytope(int coffs[10], int counts[3]){
     // 如果AdditionFc中只有一个参数时，写1就可以了
     PyObject* pArgs = PyTuple_New(16);
     
-    int a[12] = {2, 1, 3, 4, 0, 0, 0, 10, 0, 5, 0, 0};
+    // int a[12] = {2, 1, 3, 4, 0, 0, 0, 10, 0, 5, 0, 0};
 
     // for(int i = 0; i < 12; i++){
     //     // 第i个参数，传入 int 类型的值 coffs[i]
@@ -219,4 +219,54 @@ std::map<int, int> graph_color_for_CtrlStep(int totalNum, std::vector<std::pair<
 
     // II after graph_color algorithms
     return Mem2CtrlStep;
+}
+
+
+
+int minimumIterDistGen(int coffs[10], int counts[3]){
+ 
+    // 3、调用python文件名，不用写后缀
+	PyObject* pModule = PyImport_ImportModule("iterDistGen");
+	if( pModule == NULL ){
+		std::cout <<"module not found\n";
+	}
+    // 4、调用函数
+	PyObject* pFunc = PyObject_GetAttrString(pModule, "run");
+	if( !pFunc || !PyCallable_Check(pFunc)){
+		std::cout <<"not found function run\n";
+	}
+    
+    //5、给python传参数
+    // 函数调用的参数传递均是以元组的形式打包的,2表示参数个数
+    // 如果AdditionFc中只有一个参数时，写1就可以了
+    PyObject* pArgs = PyTuple_New(14);
+
+    for(int i = 0; i < 8; i++){
+        // 第i个参数，传入 int 类型的值 coffs[i]
+        PyTuple_SetItem(pArgs, i, Py_BuildValue("i", coffs[i])); 
+    }
+    // PyTuple_SetItem(pArgs, 0, Py_BuildValue("i", totalNum)); 
+    
+    for(int i = 0; i < 3; i++){
+        // 第2*i + 5 & 2*i + 6个参数，传入 int 类型的值 coffs[i]
+        PyTuple_SetItem(pArgs, 2*i + 8, Py_BuildValue("i", 0)); 
+        int Count = counts[i]-1 < 0 ? 0 : counts[i]-1;
+        PyTuple_SetItem(pArgs, 2*i + 9, Py_BuildValue("i", Count)); 
+    }
+    
+    // 6、使用C++的python接口调用该函数
+    PyObject* pReturn = PyEval_CallObject(pFunc, pArgs);
+    
+    // 7、接收python计算好的返回值
+    int minIterDist;
+
+    PyArg_Parse(pReturn, "i", &minIterDist);
+
+    // i表示转换成int型变量。
+    // 在这里，最需要注意的是：PyArg_Parse的最后一个参数，必须加上“&”符号
+    // PyArg_Parse(pReturn, "i", &nResult);
+    
+
+    // II after graph_color algorithms
+    return minIterDist;
 }

@@ -5,15 +5,15 @@
 #include <regex>
 #include <sstream>
 #include <getopt.h>
+#include <vector>
+#include <fstream>
+#include <stdexcept>
+#include "spdlog/spdlog.h"
+#include "spdlog/cfg/argv.h"
 #include "op/operations.h"
 #include "ir/adg_ir.h"
 #include "ir/dfg_ir.h"
 #include "mapper/mapper_sa.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/cfg/argv.h"
-#include <vector>
-#include <fstream>
-#include <stdexcept>
 #include "rtlil/rtlil.h"
 #include "rtlil/rtlil_ir.h"
 

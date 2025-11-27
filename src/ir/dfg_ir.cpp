@@ -296,6 +296,7 @@ DFG* DFGIR::parseDFGJson(std::string filename){
                 DFGIONode* dfg_io_node = new DFGIONode();
                 if(nodeJson.contains("ref_name")){
                     dfg_io_node->setMemRefName(nodeJson["ref_name"].get<std::string>());
+                    // std::cout << "refname: " << nodeJson["ref_name"].get<std::string>() << std::endl;
                     cell->setParameters("ref_name", nodeJson["ref_name"].get<std::string>());
                 }
                 if(nodeJson.contains("multiport")){//@multport Padding
@@ -452,6 +453,7 @@ DFG* DFGIR::parseDFGJson(std::string filename){
         int edgeId = edgeJson["_gvid"].get<int>();
         int iterdist;
         bool isBackEdge;
+        bool isDynamicDist;
         int logicLat;//@multport
         int edgeType = 0; //@yuan: default is data dependence edge
         Cell* cell = _rtlil->getCell(dstId);
@@ -498,6 +500,16 @@ DFG* DFGIR::parseDFGJson(std::string filename){
         if(edgeJson.contains("type")){
             edgeType = std::stoi(edgeJson["type"].get<std::string>());
         }
+        //@yuan_ddp:
+        if(edgeJson.contains("isdynamic")){
+            if(std::stoi(edgeJson["isdynamic"].get<std::string>())){
+                isDynamicDist = true;
+            }else{
+                isDynamicDist = false;
+            }
+        }else{
+            isDynamicDist = false;
+        }
         // std::cout << "dfg_ir isLoop: " << isLoop << std::endl;
         if(isConst(srcId)){ // merge const node into the node connected to it
             DFGNode* node = dfg->node(dstId);
@@ -516,6 +528,7 @@ DFG* DFGIR::parseDFGJson(std::string filename){
             edge->setBackEdge(isBackEdge);
             edge->setIterDist(iterdist);
             edge->setlogicLat(logicLat);//@multport
+            edge->setDynamicDist(isDynamicDist);//@yuan_ddp
             if(edgeType == 1){
                 edge->setType(EDGE_TYPE_MEM);
                 std::string srcNodeName = dfg->node(srcId)->name();
@@ -548,6 +561,7 @@ DFG* DFGIR::parseDFGJson(std::string filename){
         wire->setlogicLat(logicLat);
         wire->setBackEdge(isBackEdge);
         wire->setType(edgeType);
+        wire->setDynamicDist(isDynamicDist);//@yuan_ddp
         _rtlil->addWire(wire);       
     }
     // // add const operand for nodes with only one operand, should be avoid

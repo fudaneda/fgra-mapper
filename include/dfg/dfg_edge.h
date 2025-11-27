@@ -24,6 +24,7 @@ private:
     int _logicLat = 0; // due to multport add a logic lat //mulrport      
     int _iterDist = 0; // iteration distance for loop-carried dependence
     bool _isDontTouch = false;    
+    bool _isDynamicDist = false; //@yuan_ddp: if true, the src Node and dst Node have dynamic iteration distance
 public:
     using GraphEdge::GraphEdge; // C++11, inherit parent constructors
     EdgeType type(){ return _type; }
@@ -40,6 +41,9 @@ public:
     int iterDist(){ return _iterDist; }
     void setDontTouch(bool touch){ _isDontTouch = touch; }
     bool isDontTouch(){ return _isDontTouch; }
+    //@yuan_ddp: for nodes have dynamic iteration distance
+    void setDynamicDist(bool dynamic){ _isDynamicDist = dynamic; }
+    bool isDynamicDist(){ return _isDynamicDist; }
 };
 
 

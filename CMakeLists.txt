@@ -14,7 +14,7 @@ file(GLOB_RECURSE SRCS ${CMAKE_SOURCE_DIR}/src/*.cpp)
 add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/src/main.cpp ${SRCS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
-set(Python3_ROOT_DIR "/root/chipyard/.conda-env/bin")
+set(Python3_ROOT_DIR "/usr/bin")
 set(Python3_FIND_STRATEGY "LOCATION")
 find_package(Python3 REQUIRED COMPONENTS Development)
 target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})

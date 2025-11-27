@@ -59,11 +59,11 @@ void Graphviz::drawDFG(){
                 std::string srcName = dfg->node(srcNodeId)->name();
                 std::string quoteSrcName = "\"" + srcName + "\"";
                 ofs << quoteSrcName << "->" << quoteName << "[weight = 4, color = " << ((bits%12)+1) << ", label =" << "\"lat = " << lat << "\\nRDU = " << rdu << "\\nlogiclat=" << srclogiclat 
-                    << "\\nop=" << operandIdx << "\"";
+                    << "\\nop=" << operandIdx;
                 if(edge->isBackEdge()){
-                    ofs << ", style = dashed" <<"];\n";
+                    ofs << "\\niterdist="<< edge->iterDist() << "\"" <<", style = dashed" <<"];\n";
                 }else{
-                    ofs <<"];\n";
+                    ofs <<"\"];\n";
                 }
                 
             }

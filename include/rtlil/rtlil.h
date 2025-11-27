@@ -19,6 +19,7 @@ private:
     int _logicLat = 0; // due to multport add a logic lat //mulrport   
     int _iterDist = 0; // iteration distance for loop-carried dependence   
     int _edgeType = 0; // @yuan: the type of edge, default is data dependency edge
+    bool _isDynamicDist = false; //@yuan_ddp: if true, the src Node and dst Node have dynamic iteration distance
 public:
     Wire(){}
     Wire(int edgeId){ _id = edgeId; }
@@ -55,6 +56,9 @@ public:
     }
     void setWidth(int width){ _width  = width; }
     int Width(){ return _width; }
+    //@yuan_ddp: for nodes have dynamic iteration distance
+    void setDynamicDist(bool dynamic){ _isDynamicDist = dynamic; }
+    bool isDynamicDist(){ return _isDynamicDist; }
 };
 
 class Cell

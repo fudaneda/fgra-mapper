@@ -514,7 +514,7 @@ void DFG::deleteBackEdgeLoop(int backedgeId){
 }
 // delete memory-dependent edge
 void DFG::deleteMemEdge(){
-    std::cout << "before delete edge size: " << edges().size()<< std::endl;
+    // std::cout << "before delete edge size: " << edges().size()<< std::endl;
     for(auto iobNode : ioNodes()){
         DFGIONode* IOnode = dynamic_cast<DFGIONode*>(node(iobNode));
         // std::cout << "nodename: " << IOnode->name() << " edge size: " << IOnode->inputEdges().size() << std::endl;
@@ -531,7 +531,7 @@ void DFG::deleteMemEdge(){
             }
         }
     }
-    std::cout << "after delete edge size: " << edges().size()<< std::endl;
+    // std::cout << "after delete edge size: " << edges().size()<< std::endl;
 }
 
 
@@ -541,6 +541,7 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
     _multiportIOs.clear();
     std::map<std::string, std::vector<int>> multiportIO;
     auto outNodeIds = getOutNodes(); // OUTPUT/STORE nodes
+    int dataWidthinByte = CGWidth() / 8;
     for(int id : _ioNodes){
         DFGIONode* ionode = dynamic_cast<DFGIONode*>(node(id));
         if(ionode->MultiportType() > 0){
@@ -555,9 +556,44 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
                 multiportIO[memName].push_back(id);
         }        
     }
+    //@yuan: we should using memory duplication when the spm space is available 
+    std::set<std::string> visited_name;
+    // for(int id : _ioNodes){
+    //     DFGIONode* ionode = dynamic_cast<DFGIONode*>(node(id));
+    //     auto memName = ionode->memRefName();
+    //     if(ionode->MultiportType() > 0 && !visited_name.count(memName)){
+    //         if(_multiportIOs[memName].second.size() == 0){//@yuan: we consider the situation that the array only has input nodes  
+    //             int dataSize = ionode->memSize();
+    //             if(dataSize / dataWidthinByte > Bmax){//@yuan: the array with a too big size to duplicate
+    //                 visited_name.emplace(memName);
+    //                 continue;
+    //             }
+    //             for(auto& elem : multiportIO[memName]){
+    //                 DFGIONode* eachNode = dynamic_cast<DFGIONode*>(node(elem));
+    //                 eachNode->setMultiportType(0);
+    //             }
+    //             visited_name.emplace(memName);
+    //             _multiportIOs.erase(memName);
+    //             multiportIO.erase(memName);
+    //             // // then, we should judge whether using partition or duplication
+    //             // auto BS_queue = _multiportBnakingSolutions[memName];
+    //             // auto bankSolutionTop = BS_queue.top();
+    //             // BS_queue.pop();
+    //             // auto bankSolutionNext = BS_queue.top();
+    //             // if(bankSolutionTop.II != 1 || bankSolutionNext.II != 1){//@yuan: partition can not find a solution with II = 1, using duplication can have better II
+    //             //     for(auto& elem : multiportIO[memName]){
+    //             //         DFGIONode* eachNode = dynamic_cast<DFGIONode*>(node(elem));
+    //             //         eachNode->setMultiportType(0);
+    //             //     }
+    //             //     visited_name.emplace(memName);
+    //             //     _multiportIOs.erase(memName);
+    //             //     multiportIO.erase(memName);
+    //             // }
+    //         }
+    //     }        
+    // }
     if(!modify){//@yuan: modify DFG doesn't affect the IOB Node
         // int B_MAX = 4096; int N_MAX = 8;
-        int dataWidthinByte = CGWidth() / 8;
         // 1、初始化python接口  
         Py_Initialize();
         if(!Py_IsInitialized()){
@@ -572,12 +608,13 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
         // std::cout << pyCMD << "\n";
         PyRun_SimpleString(pyCMD.c_str());
         _multiportBnakingSolutions.clear();
+        _numPyInit = 1;
         //pattern: std::vector<std::pair<int, int>>
         for(auto& elem :  multiportIO){ //@yuan: generate all the N,B,II for each array
             auto arrayName = elem.first;
             auto confLSNodeIDs = elem.second;
-            // std::cout << "Handling array ------- " << arrayName << "\n";
-            // std::cout << "array num ------- " << confLSNodeIDs.size() << "\n";
+            std::cout << "Handling array ------- " << arrayName << "\n";
+            std::cout << "array num ------- " << confLSNodeIDs.size() << "\n";
             auto getABC = ([] (std::vector<std::pair<int, int>> pattern){
                     std::vector<int> result;
                     int size = pattern.size();
@@ -597,6 +634,7 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
             // L/SNode pairs means the numbers (in this loop) of conflicting memory access
             
             for(int N = 1; N <= Nmax; N *= 2){
+            // for(int N = 1; N <= 1; N *= 2){ //@yuan: for test
                 bool exceedSize =false;
                 bool badPartition =false;
                 for(int B = 1; B <= Bmax; B *= 2){
@@ -636,11 +674,11 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
                                 continue;
                             }
                             //@yuan: if there is flow-depedency between two nodes, we think they are conflict
-                            if(hasFlowDependency(Node0, Node1)){
-                                ConflictTable.push_back(std::make_pair(i, j));
-                                noConflict = false;
-                                continue;
-                            }
+                            // if(hasFlowDependency(Node0, Node1)){
+                            //     ConflictTable.push_back(std::make_pair(i, j));
+                            //     noConflict = false;
+                            //     continue;
+                            // }
                             auto Pattern1 = Node1->pattern();
                             int offset1 = Node1->memOffset() + Node1->reducedMemOffset();
                             auto ABC_1 = getABC(Pattern1);
@@ -656,6 +694,7 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
                             coffs[8] = N;
                             coffs[9] = B;
                             if(conflictpolytope(coffs, counts)){
+                            // if(true){//@yuan: for test COFFA without partition
                                 ConflictTable.push_back(std::make_pair(i, j));
                                 noConflict = false;
                             }
@@ -695,7 +734,19 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
             //     std::cout << "II: " << elem.II << " N: " << elem.N << " B: " << elem.B << "\n";
             // }
             //@yuan: we should update the N,B,step for the first time
-            updateBankingSettings(arrayName, true);
+            // updateBankingSettings(arrayName, true);
+        }
+        visited_name.clear();
+        for(auto& elem : multiportIO){
+            std::string refname = elem.first;
+            if(!visited_name.count(refname)){
+                visited_name.emplace(refname);
+                updateBankingSettings(refname, true);
+            }
+            // for(auto& id: elem.second){
+            //     DFGIONode* ionode = dynamic_cast<DFGIONode*>(node(id));
+            //     ionode->setMultiportType(0);
+            // }
         }
         //8、结束python接口初始化
         Py_Finalize();
@@ -729,7 +780,7 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
                     curBankNum += 1;
                 }
             }
-            if(curBankNum >= maxBank){//@yuan: the used bank exceeds the upper bound
+            if(curBankNum > maxBank){//@yuan: the used bank exceeds the upper bound
                 updateBankingSettings(maxArray, false);
             }else{
                 break;
@@ -743,6 +794,14 @@ void DFG::genBankingSolution(bool modify, int Nmax, int Bmax, int maxBank){
         //     int curII = curSolution.II;
         //     int curB = curSolution.B;
         //     std::cout << "name: " << elem.first << "II: " << curII<< " N: " << curN << " B: " << curB << std::endl;
+        // }
+        // _multiportIOs.clear(); 
+        // for(auto& elem : multiportIO){
+        //     std::string refname = elem.first;
+        //     for(auto& id: elem.second){
+        //         DFGIONode* ionode = dynamic_cast<DFGIONode*>(node(id));
+        //         ionode->setMultiportType(0);
+        //     }
         // }
 
     }
@@ -759,6 +818,7 @@ void DFG::updateBankingSettings(std::string memName, bool isFirst){
     if(_multiportIOSteps.count(memName)){
         _multiportIOSteps[memName].clear();
     }
+    std::cout << "update partition!!!!!" << std::endl;
     if(!isFirst) _multiportBnakingSolutions[memName].pop();
     BankingSolution currentSolution =  _multiportBnakingSolutions[memName].top();
     int N = currentSolution.N;
@@ -833,23 +893,131 @@ bool DFG::hasFlowDependency(DFGIONode* node0, DFGIONode* node1){
     }else if(getOutNodes().count(node0->id()) && getOutNodes().count(node1->id())){
         return false;
     }
+    std::cout << "node0 name: " << node0->name() << " node1 name: " << node1->name() << std::endl;
     if(!getOutNodes().count(node0->id())){ //@yuan: node0 is input node
-        for(auto& elem : node0->inputEdges(1)){ //then, the control edge comes from node1
-            DFGEdge * Edge = edge(elem.second);
-            if(Edge->isBackEdge() && Edge->srcId() == node1->id()){
-                return true;
+        for(auto& edges : node0->inputEdges()){
+            if(edges.first != 1) continue;
+            for(auto& elem : edges.second){ //then, the control edge comes from node1
+                DFGEdge * Edge = edge(elem.second);
+                if(Edge->isBackEdge() && Edge->srcId() == node1->id()){
+                    return true;
+                }
             }
         }
     }else{//@yuan: node1 is input node
-        for(auto& elem : node1->inputEdges(1)){ //then, the control edge comes from node0
-            DFGEdge * Edge = edge(elem.second);
-            if(Edge->isBackEdge() && Edge->srcId() == node0->id()){
-                return true;
+        for(auto& edges : node1->inputEdges()){
+            if(edges.first != 1) continue;
+            for(auto& elem : edges.second){ //then, the control edge comes from node0
+                DFGEdge * Edge = edge(elem.second);
+                if(Edge->isBackEdge() && Edge->srcId() == node0->id()){
+                    return true;
+                }
             }
         }
     }
     return false;
 }
+
+void DFG::updateIterDist(){
+    // 1、初始化python接口  
+    Py_Initialize();
+    if(!Py_IsInitialized()){
+        std::cout << "python init fail\n";
+    }
+    // 2、初始化python系统文件路径，保证可以访问到 .py文件
+    PyRun_SimpleString("import sys");
+    std::string str1 = "sys.path.append('";
+    std::string str2 = PROJECT_PATH;
+    std::string str3 = "/src/Py_Tools')";
+    std::string pyCMD = str1 + str2 + str3;
+    // std::cout << pyCMD << "\n";
+    PyRun_SimpleString(pyCMD.c_str());
+    // if(_numPyInit == 0){
+    //     // 1、初始化python接口  
+    //     Py_Initialize();
+    //     if(!Py_IsInitialized()){
+    //         std::cout << "python init fail\n";
+    //     }
+    //     // 2、初始化python系统文件路径，保证可以访问到 .py文件
+    //     PyRun_SimpleString("import sys");
+    //     std::string str1 = "sys.path.append('";
+    //     std::string str2 = PROJECT_PATH;
+    //     std::string str3 = "/src/Py_Tools')";
+    //     std::string pyCMD = str1 + str2 + str3;
+    //     // std::cout << pyCMD << "\n";
+    //     PyRun_SimpleString(pyCMD.c_str());
+    // }
+    int dataWidthinByte = CGWidth() / 8;
+    for(auto elem : edges()){
+        DFGEdge* edge = elem.second;
+        if(edge->isDynamicDist()){
+            auto getABC = ([] (std::vector<std::pair<int, int>> pattern){
+                    std::vector<int> result;
+                    int size = pattern.size();
+                    if(size == 0){
+                        assert(false && "no pattern?");
+                    }else{
+                        result.push_back(pattern[0].first);
+                        for(int i = 1; i < size; i++){
+                            result.push_back(pattern[i].first - pattern[i-1].first + 
+                                                result.back() * pattern[i-1].second);
+                        }
+                    }
+                    return result;
+                }
+            );
+            DFGIONode* srcNode = dynamic_cast<DFGIONode*>(node(edge->srcId()));
+            DFGIONode* dstNode = dynamic_cast<DFGIONode*>(node(edge->dstId()));
+            auto PatternSrc = srcNode->pattern();
+            auto PatternDst = dstNode->pattern();
+            auto ABC_Src = getABC(PatternSrc);
+            auto ABC_Dst = getABC(PatternDst);
+            int offsetSrc = srcNode->memOffset() + srcNode->reducedMemOffset();
+            int offsetDst = dstNode->memOffset() + dstNode->reducedMemOffset();
+            int coffs[8] = {0};
+            int counts[3] = {0};
+            //@yuan_ddp: the input node first
+            for(int l = 0; l < PatternDst.size(); l++){
+                coffs[l] = ABC_Src[l] / dataWidthinByte;
+                coffs[l+4] = ABC_Dst[l] / dataWidthinByte;
+                counts[l] = PatternDst[l].second;
+            }
+            coffs[3] = offsetSrc / dataWidthinByte;
+            coffs[7] = offsetDst / dataWidthinByte;
+            int minIterDist = minimumIterDistGen(coffs, counts);
+            std::cout << "Setting iteration distance for edge from: "<<srcNode->name() << " to " << dstNode->name() << " with: " << minIterDist << std::endl; 
+            edge->setIterDist(minIterDist);
+        }
+    }
+    // exit(0);
+    //8、结束python接口初始化
+//    Py_Finalize();
+
+}
+
+// bool DFG::hasFlowDependency(DFGIONode* node0, DFGIONode* node1){
+//     if(!getOutNodes().count(node0->id()) && !getOutNodes().count(node1->id())){//@yuan: for two input/output nodes, there is no flow-dependency
+//         return false;
+//     }else if(getOutNodes().count(node0->id()) && getOutNodes().count(node1->id())){
+//         return false;
+//     }
+//     if(!getOutNodes().count(node0->id())){ //@yuan: node0 is input node
+//         for(auto& elem : node0->inputEdges(1)){ //then, the control edge comes from node1
+//             DFGEdge * Edge = edge(elem.second);
+//             if(Edge->isBackEdge() && Edge->srcId() == node1->id()){
+//                 return true;
+//             }
+//         }
+//     }else{//@yuan: node1 is input node
+//         for(auto& elem : node1->inputEdges(1)){ //then, the control edge comes from node0
+//             DFGEdge * Edge = edge(elem.second);
+//             if(Edge->isBackEdge() && Edge->srcId() == node0->id()){
+//                 return true;
+//             }
+//         }
+//     }
+//     return false;
+// }
 // void DFG::partitionCheck(int maxBank){
 //     while(true){
 //         for(auto& elem :  multiportIO){ 

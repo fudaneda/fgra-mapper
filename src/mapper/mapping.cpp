@@ -590,7 +590,7 @@ bool Mapping::routeDfgEdgePass(DFGEdge* edge, ADGNode* passNode, int srcPort, in
                     }
                     // find one available port
                     routeSrcPort = srcPort;
-                    routeDstPort == port;
+                    routeDstPort = port;
                     flag = true;
                     break;
                 }
@@ -610,7 +610,7 @@ bool Mapping::routeDfgEdgePass(DFGEdge* edge, ADGNode* passNode, int srcPort, in
                         continue;
                     }
                     // find one available port
-                    routeSrcPort == port;
+                    routeSrcPort = port;
                     routeDstPort = dstPort;
                     flag = true;
                     break;                    
@@ -634,7 +634,7 @@ bool Mapping::routeDfgEdgePass(DFGEdge* edge, ADGNode* passNode, int srcPort, in
                             continue;
                         }
                         // find one available inport
-                        routeSrcPort == inPort;
+                        routeSrcPort = inPort;
                         routeDstPort = outPort;
                         inflag = true;
                         break;                        
@@ -655,7 +655,7 @@ bool Mapping::routeDfgEdgePass(DFGEdge* edge, ADGNode* passNode, int srcPort, in
             int outPort = elem.first;
             auto inPorts = gibNode->out2ins(outPort);
             if(!inPorts.empty()){ // find one available inport
-                routeSrcPort == *(inPorts.begin());
+                routeSrcPort = *(inPorts.begin());
                 routeDstPort = outPort;
                 outflag = true;
                 break;
@@ -1762,7 +1762,7 @@ void Mapping::latencySchedule(){
                         if(e->isBackEdge()){
                             int dstNodeLat = _dfgNodeAttr[dstNodeId].lat;
                             int edgeIterDist = e->iterDist();
-                            if(floor(1.5* (targetLat - dstNodeLat)) <  edgeIterDist){
+                            if((targetLat > dstNodeLat)&&(floor(1.5* (targetLat - dstNodeLat)) <  edgeIterDist)){
                                 continue;
                             }
                         }
@@ -1877,7 +1877,7 @@ void Mapping::latencySchedule(){
                         int dstNodeLat = _dfgNodeAttr[e->dstId()].lat;
                         int srcNodeLat = _dfgNodeAttr[e->srcId()].lat;
                         int edgeIterDist = e->iterDist();
-                        if(floor(1.5* (srcNodeLat - dstNodeLat)) <  edgeIterDist){
+                        if((srcNodeLat > dstNodeLat)&&(floor(1.5* (srcNodeLat - dstNodeLat)) <  edgeIterDist)){
                             continue;
                         }
                     }
@@ -1951,7 +1951,7 @@ void Mapping::latencySchedule(){
                             int dstNodeLat = _dfgNodeAttr[e->dstId()].lat;
                             int srcNodeLat = _dfgNodeAttr[e->srcId()].lat;
                             int edgeIterDist = e->iterDist();
-                            if(floor(1.5* (srcNodeLat - dstNodeLat)) <  edgeIterDist){
+                            if((srcNodeLat > dstNodeLat)&&(floor(1.5* (srcNodeLat - dstNodeLat)) <  edgeIterDist)){
                                 continue;
                             }
                         }
@@ -2076,7 +2076,7 @@ void Mapping::calEdgeLatVio(){
                     int dstNodeLat = _dfgNodeAttr[e->dstId()].lat;
                     int srcNodeLat = _dfgNodeAttr[e->srcId()].lat;
                     int edgeIterDist = e->iterDist();
-                    if(floor(1.5* (srcNodeLat - dstNodeLat)) <  edgeIterDist){
+                    if((srcNodeLat > dstNodeLat)&&(floor(1.5* (srcNodeLat - dstNodeLat)) <  edgeIterDist)){
                         e->setDontTouch(true);
                         continue;
                     }
@@ -2091,6 +2091,8 @@ void Mapping::calEdgeLatVio(){
                     routeLat -= _II * e->iterDist(); // latency due to iteration distance
                 }
                 int srcNodeId = _dfg->edge(eid)->srcId();
+                DFGNode *srcnode = _dfg->node(srcNodeId);
+                // std::cout << " edge from: " << srcnode->name() << " to: " << node->name() << " port: " << edge.first <<" width: " << bitwidth << std::endl;
                 // int srcNodeLat;
                 // if(srcNodeId != _dfg->id()){ // not connected to DFG input port
                 int srcNodeLat = _dfgNodeAttr[srcNodeId].lat;       
@@ -2107,8 +2109,6 @@ void Mapping::calEdgeLatVio(){
                 // }
                 // _dfgEdgeAttr[eid].lat = maxLat - srcNodeLat; // including RDU latency   
                 //@yuan: for the test, delete when the code finishing
-                DFGNode *srcnode = _dfg->node(srcNodeId);
-                // std::cout << " edge from: " << srcnode->name() << " to: " << node->name() << " port: " << edge.first <<" width: " << bitwidth << std::endl;
                 // std::cout << "maxLat: " <<maxLat<<" srcNodeLat: " << srcNodeLat << " routeLat: " << routeLat << std::endl;
                 //@yuan
                 int requiredDelay = maxLat - srcNodeLat - routeLat; // RDU latency  
@@ -2652,6 +2652,7 @@ int Mapping::hasVioMemDenpendency(){
             multiportAvailLatModII[elem.first][step] = nums;
         }      
     }
+    //@yuan TODO: fix bug for II = 1
     for(auto &elem : _dfg->ioNodes()){
         DFGIONode* iobNode = dynamic_cast<DFGIONode*>(_dfg->node(elem));
         if(!iobNode->dependencyNodes().empty()){
@@ -2704,7 +2705,7 @@ int Mapping::TaskLat(DFGNode* node, int time){
 
 //@yuan: alfter PnR and Synchronization, we can try to make best use of the memory banks for non-multiport memory access
 //@yuan: tune the number of used bank for non-multiport memory access, enable making best use of the memory bank
-int Mapping::updateNonMultiPortBank(){
+int Mapping::updateNonMultiPortBank(bool isreset){
     std::vector<int> iobNodeSet;
     for(auto elem : _dfg->ioNodes()){
         DFGIONode* iobDfg = dynamic_cast<DFGIONode*>(_dfg->node(elem));
@@ -2713,6 +2714,7 @@ int Mapping::updateNonMultiPortBank(){
         iobDfg->setNumMultiportBank(1);//@yuan: very time we finish PnR, we need to reset the N and B for non-multiport nodes
         iobDfg->setMultiportBankSize(1);
     }
+    if(isreset) return 1;
     std::sort(iobNodeSet.begin(), iobNodeSet.end(), [this](int a, int b){
         DFGIONode* iobDfgNodeA = dynamic_cast<DFGIONode*>(_dfg->node(a));
         DFGIONode* iobDfgNodeB = dynamic_cast<DFGIONode*>(_dfg->node(b));
@@ -2787,4 +2789,18 @@ int Mapping::updateNonMultiPortBank(){
         mappedNonMultiPortArray.emplace(iobDfg->memRefName());
     }
     return 1;
+}
+//@yuan_ddp: update the iteration distance if II is not satisfied
+bool Mapping::updateDynamicDist(){
+    bool hasUpdated = false;
+    for(auto elem : _dfg->edges()){
+        if(elem.second->isDynamicDist()){
+            int curDist = elem.second->iterDist();
+            if(_II <= curDist){
+                elem.second->setIterDist(std::max(1, curDist - 1));
+                hasUpdated = true;
+            }
+        }
+    }
+    return hasUpdated;
 }

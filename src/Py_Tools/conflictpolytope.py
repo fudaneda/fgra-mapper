@@ -2,11 +2,12 @@ import sys
 from pulp import LpVariable, LpProblem, LpMinimize, LpStatus, PULP_CBC_CMD,lpSum
 
 def run(*argv):
+    # print(argv)
     # print("len", len(argv))
     if len(argv) != 16:
         print("Usage: python solve_lp.py <A1> <B1> <C1> <D1> <A2> <B2> <C2> <D2><N> <B> <i_low> <i_high> <j_low> <j_high> <k_low> <k_high>")
         sys.exit(1)
-    print(argv)
+    # print(argv)
     # Parse command line arguments
     phi_1 = [int(argv[0]), int(argv[1]), int(argv[2]), int(argv[3])]
     phi_2 = [int(argv[4]), int(argv[5]), int(argv[6]), int(argv[7])]
@@ -40,8 +41,8 @@ def run(*argv):
     # Add constraints to represent the division operation
     problem += phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4 - (phi_2[0]*x1 + phi_2[1]*x2 + phi_2[2]*x3 + phi_2[3]*x4) - int(argv[8] * argv[9])*x5 -int(argv[9]) <= -1, "Constraint1" # a-b - kNB -B < 0
     problem += phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4 - (phi_2[0]*x1 + phi_2[1]*x2 + phi_2[2]*x3 + phi_2[3]*x4) - int(argv[8] * argv[9])*x5 +int(argv[9])  >= 1, "Constraint2" # a-b - kNB +B > 0
-    problem += (phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4) - (phi_2[0]*x1 + phi_2[1]*x2 + phi_2[2]*x3 + phi_2[3]*x4) == int(argv[8])*x5, "Constraint3" # a-b - kNB +B^2 > 0
-
+    # problem += (phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4) - (phi_2[0]*x1 + phi_2[1]*x2 + phi_2[2]*x3 + phi_2[3]*x4) == int(argv[8])*x5, "Constraint3" # a-b - kNB +B^2 > 0
+    problem += z1 - z2 == int(argv[8])*x5, "Constraint3" # 
 
 
     # Solve the problem
@@ -61,7 +62,7 @@ def run(*argv):
 
 
 if __name__ == "__main__":
-    run(1,32,0,0,1,32,0,33,2,32,0,30,0,30,0,29)
+    run(2, 0, 0, 10, 2, 0, 0, 11, 4, 1, 0, 505, 0, 0, 0, 0)
     sys.exit(1)
     if len(sys.argv) != 12:
         print("Usage: python solve_lp.py <A1 - A2> <B1 - B2> <C1 - C2> <N*B> <D1 - D2> <i_low> <i_high> <j_low> <j_high> <k_low> <k_high>")

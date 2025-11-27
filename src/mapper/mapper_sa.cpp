@@ -105,7 +105,6 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
     int res = 1;
     ADG* adg = _mapping->getADG();
     int maxItersUpdate = maxItersNoImprv;
-    int iterCount = 0;
     
     // 1、初始化python接口  
     Py_Initialize();
@@ -124,6 +123,9 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
     while(true){
         res = 1;
         int validPartition = 0;
+        int iterCount = 0;
+        //@yuan: every time we begin to map, we need to reset the partion scheme for non-multiport IOB Node
+        _mapping->updateNonMultiPortBank(true);
         while(!pnrSyncSameDfg(T0, maxItersPerTemp, maxItersNoImprv)){
             iterCount ++;
             int II = _mapping->II();
@@ -133,7 +135,7 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
                 res = -1;
                 break;
             }
-            if(iterCount == maxItersUpdate){//@yuan: mapping fails for long time, maybe we can consider updating the partition scheme
+            if(iterCount == maxItersUpdate && update){//@yuan: mapping fails for long time, maybe we can consider updating the partition scheme
                 iterCount = 0;
                 DFG* dfg = _mapping->getDFG();
                 auto multiportIOs = dfg->multiportIOs(); 
@@ -179,6 +181,13 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
         }
         if(res > 0 && update){//@yuan: PnR and schedule success, check the conflicts 
             //@yuan: if no conflict, break
+            //@yuan_ddp: we check the RAW dependency is satisfied first
+            // if(_mapping->updateDynamicDist()){
+            //     DFG* newDfg = new DFG();
+            //     *newDfg = *(_mapping->getDFG());
+            //     setDFG(newDfg, true);
+            //     continue;
+            // }
             DFG* dfg = _mapping->getDFG();
             auto multiportIOs = dfg->multiportIOs();
             auto getABC = ([] (std::vector<std::pair<int, int>> pattern){
@@ -214,14 +223,14 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
                         auto Pattern0 =  Node0->pattern();
                         int offset0 = Node0->memOffset() + Node0->reducedMemOffset();
                         auto ABC_0 = getABC(Pattern0);
-                        auto srcNodeOpLat = _mapping->getDFG()->node(LSNodeIDs[i])->opLatency();
+                        auto srcNodeOpLat = _mapping->getDFG()->getOutNodes().count(LSNodeIDs[i])? 0 :  _mapping->getDFG()->node(LSNodeIDs[i])->opLatency();
                         auto lat0 = _mapping->dfgNodeAttr(LSNodeIDs[i]).lat - srcNodeOpLat;
                         for(int j = i + 1; j < LSNodeIDs.size() && noConflict; j++){
                             auto Node1 = dynamic_cast<DFGIONode*>(dfg->node(LSNodeIDs[j]));
                             auto Pattern1 = Node1->pattern();
                             int offset1 = Node1->memOffset() + Node1->reducedMemOffset();
                             auto ABC_1 = getABC(Pattern1);
-                            auto dstNodeOpLat = _mapping->getDFG()->node(LSNodeIDs[j])->opLatency();
+                            auto dstNodeOpLat = _mapping->getDFG()->getOutNodes().count(LSNodeIDs[j])? 0 : _mapping->getDFG()->node(LSNodeIDs[j])->opLatency();
                             auto lat1 = _mapping->dfgNodeAttr(LSNodeIDs[j]).lat - dstNodeOpLat;
                             int coffs[11] = {0};
                             int counts[3] = {0};
@@ -236,7 +245,7 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
                             coffs[9] = temSoluition.B;
                             int distance = (lat1 - lat0) / _mapping->II();
                             coffs[10] = distance;
-                            // std::cout << Node1->name() << " to " <<  Node0->name() << " the distance after PnR: " << distance << std::endl;
+                            // std::cout << Node1->name() << " latency: " << lat1 <<" to " <<  Node0->name() << " latency: " << lat0 << " the distance after PnR: " << distance << std::endl;
                             // for(auto test : coffs){
                             //     std::cout << test << " " ;
                             // }
@@ -255,23 +264,28 @@ int MapperSA::pnrSync(float T0, int maxItersPerTemp, int maxItersNoImprv, bool m
                 }
             }
             if(allnoConf){
-                //@yuan: after PnR we need to check whether the available banks can accommodate the non-multiport memory access and allocate the free banks to non-multiport memory access
-                //@yuan: after PnR and synchronization succeed, try to use more memory banks for non-multiport 
-                validPartition = _mapping->updateNonMultiPortBank();
-                if(validPartition){
-                    break;
-                }
+                break;
             }
-
         }else{
             break;            
-        }        
+        }
+        // if(allnoConf){
+        //     //@yuan: after PnR we need to check whether the available banks can accommodate the non-multiport memory access and allocate the free banks to non-multiport memory access
+        //     //@yuan: after PnR and synchronization succeed, try to use more memory banks for non-multiport 
+        //     validPartition = _mapping->updateNonMultiPortBank(false);
+        //     if(validPartition){
+        //         break;
+        //     }
+        // }        
     }
     
     //8、结束python接口初始化
     Py_Finalize();
     //@yuan: TODO: check the data size is overflow after partition
     if(res > 0){
+        //@yuan: after PnR we need to check whether the available banks can accommodate the non-multiport memory access and allocate the free banks to non-multiport memory access
+        //@yuan: after PnR and synchronization succeed, try to use more memory banks for non-multiport 
+        _mapping->updateNonMultiPortBank(false);
         spdlog::info("PnR and data synchronization succeed!");
         spdlog::info("Max latency: {}", _mapping->maxLat());     
         spdlog::info("Final II: {}", _mapping->II());      

@@ -53,8 +53,8 @@ def run(*argv):
     # Add constraints to represent the division operation
     problem += phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4 - (phi_2[0]*x6 + phi_2[1]*x7 + phi_2[2]*x8 + phi_2[3]*x4) - int(argv[8] * argv[9])*x5 -int(argv[9]) <= -1, "Constraint1" # a-b - kNB -B < 0
     problem += phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4 - (phi_2[0]*x6 + phi_2[1]*x7 + phi_2[2]*x8 + phi_2[3]*x4) - int(argv[8] * argv[9])*x5 +int(argv[9])  >= 1, "Constraint2" # a-b - kNB +B > 0
-    problem += (phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4) - (phi_2[0]*x6 + phi_2[1]*x7 + phi_2[2]*x8 + phi_2[3]*x4) == int(argv[8])*x5, "Constraint3" # a-b - kNB +B^2 > 0
-    # problem += z1 - z2 == int(argv[8])*x5, "Constraint3" # a-b - kNB +B^2 > 0
+    # problem += (phi_1[0]*x1 + phi_1[1]*x2 + phi_1[2]*x3 + phi_1[3]*x4) - (phi_2[0]*x6 + phi_2[1]*x7 + phi_2[2]*x8 + phi_2[3]*x4) == int(argv[8])*x5, "Constraint3" # a-b - kNB +B^2 > 0
+    problem += z1 - z2 == int(argv[8])*x5, "Constraint3" # a-b - kNB +B^2 > 0
 
 
     # Solve the problem
